@@ -19,6 +19,10 @@ var (
 	// ErrInvalidJWT is returned when an invalid or malformed JWT is provided
 	// during token validation.
 	ErrInvalidJWT = errors.New("kissauth: invalid token passed to jwt validation")
+
+	// ErrInvalidType is returned when type passed to UnwrapJWT is not the same type
+	// as CustomClaims (which you used for generating JWT token).
+	ErrInvalidType = errors.New("kissauth: can't cast type to jwt custom claims")
 )
 
 // KissAuthClientConfig holds the configuration required to initialize
