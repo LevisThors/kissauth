@@ -21,7 +21,7 @@ go get github.com/LevisThors/kissauth
 
 ## 1. Setting up KissAuth
 
-First step is to create **KissAuthClient** with _New_ method:
+First step is to create **KissAuthClient** with `New` method:
 
 ```go
 package main
@@ -34,11 +34,6 @@ import (
 	"github.com/LevisThors/kissauth"
 )
 
-type User struct {
-    Name string `json:"name"`
-    Email string `json:"email"`
-}
-
 func main() {
 	config := kissauth.KissAuthClientConfig{
 		GoogleClientID:     "your-google-client-id",
@@ -47,7 +42,6 @@ func main() {
 		GoogleScopes:       []string{"https://www.googleapis.com/auth/userinfo.profile"},
 		Verifier:          "your-pkce-verifier",
 		JWTSecret:         "your-jwt-secret-key",
-		UserEntity:        &User{}, // Your custom user struct, it should contain at least an Email
 	}
 
 	client := kissauth.New(config)
@@ -56,7 +50,7 @@ func main() {
 
 ## 2. Get redirect url from provider
 
-Use the _GetGoogleRedirectURL_ method to generate the URL for redirecting users to Google's OAuth2 consent screen:
+Use the `GetGoogleRedirectURL` method to generate the URL for redirecting users to Google's OAuth2 consent screen:
 
 ```go
     func main() {
@@ -68,30 +62,42 @@ Use the _GetGoogleRedirectURL_ method to generate the URL for redirecting users 
     }
 ```
 
-## 3. Handling the OAuth callback
+## 3. Handling the OAuth Callback
 
-After the user authenticates with Google, they will be redirected back to your application with an authorization code. Use the _ExchangeGoogleCode_ method to exchange the code for a token and retrieve user information:
+After the user authenticates with Google, they will be redirected back to your application with an authorization code. Use the `ExchangeGoogleCode` method to exchange the code for a token and retrieve user information. The `ExchangeGoogleCode` method accepts a pointer to your `User` struct, where the user information will be decoded.
+
+### Example
 
 ```go
-    func main() {
-        // ... (client setup as above)
+type User struct {
+    Name string `json:"name"`
+    Email string `json:"email"`
+}
 
-        code := "authorization-code-from-provider" // It's the code which is returned after redirect as an URL param
-        ctx := context.Background()
+func main() {
+    // ... (client setup as above)
 
-        user, err := client.ExchangeGoogleCode(ctx, code)
-        if err != nil {
-            fmt.Println("Error exchanging code:", err)
-            return
-        }
+    // The authorization code returned after the redirect as a URL parameter
+    code := "authorization-code-from-provider"
+    ctx := context.Background()
 
-        fmt.Println("User info:", user.(User))
+    // Define a variable to hold the user information
+    var user User
+
+    // Call ExchangeGoogleCode with a pointer to the user struct
+    err := client.ExchangeGoogleCode(ctx, code, &user)
+    if err != nil {
+        fmt.Println("Error exchanging code:", err)
+        return
     }
+
+    fmt.Println("User info:", user)
+}
 ```
 
 ## 4. Generating JWT token
 
-Once you have the user information, you can generate a JWT for the user session with _GenerateJWT_ method:
+Once you have the user information, you can generate a JWT for the user session with `GenerateJWT` method:
 
 ```go
    func main() {
@@ -114,7 +120,7 @@ Once you have the user information, you can generate a JWT for the user session 
 
 ## 5. Validating JWT token
 
-To validate a JWT and extract its claims, use the _ValidateJWT_ method:
+To validate a JWT and extract its claims, use the `ValidateJWT` method:
 
 ```go
    func main() {

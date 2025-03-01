@@ -27,8 +27,7 @@ var (
 )
 
 // KissAuthClientConfig holds the configuration required to initialize
-// the KissAuthClient. It includes OAuth2 client details, JWT secret,
-// and a user entity for storing user information.
+// the KissAuthClient. It includes OAuth2 client details and JWT secret
 type KissAuthClientConfig struct {
 	GoogleClientID     string   // Google OAuth2 Client ID
 	GoogleClientSecret string   // Google OAuth2 Client Secret
@@ -36,7 +35,6 @@ type KissAuthClientConfig struct {
 	GoogleScopes       []string // Google OAuth2 Scopes
 	Verifier           string   // OAuth2 PKCE verifier
 	JWTSecret          string   // Secret key for signing and validating JWTs
-	UserEntity         any      // User entity to store user information
 }
 
 // KissAuthClient is the main client for handling authentication operations.
@@ -45,7 +43,6 @@ type KissAuthClient struct {
 	oauthConfig *oauth2.Config // OAuth2 configuration
 	verifier    string         // OAuth2 PKCE verifier
 	jwtSecret   string         // Secret key for JWTs
-	userEntity  any            // User entity to store user information
 }
 
 // JWTClaims represents the claims included in a JWT. It supports custom claims
@@ -66,9 +63,8 @@ func New(conf KissAuthClientConfig) *KissAuthClient {
 			Scopes:       conf.GoogleScopes,
 			Endpoint:     google.Endpoint,
 		},
-		verifier:   conf.Verifier,
-		jwtSecret:  conf.JWTSecret,
-		userEntity: conf.UserEntity,
+		verifier:  conf.Verifier,
+		jwtSecret: conf.JWTSecret,
 	}
 }
 
@@ -81,17 +77,17 @@ func (ac *KissAuthClient) GetGoogleRedirectURL(state string) string {
 	)
 }
 
-// ExchangeGoogleCode exchanges the Google OAuth2 authorization code for a token and retrieves
-// user information from Google. It returns the user entity populated with the user's data.
-func (ac *KissAuthClient) ExchangeGoogleCode(ctx context.Context, code string) (any, error) {
+// ExchangeGoogleCode exchanges the Google OAuth2 authorization code for a token and retrieves user information.
+// The userEntity parameter is a pointer to the struct where the user information will be decoded.
+func (ac *KissAuthClient) ExchangeGoogleCode(ctx context.Context, code string, userEntity any) error {
 	if code == "" {
-		return nil, ErrEmptyOAuthCode
+		return ErrEmptyOAuthCode
 	}
 
 	// Exchange the authorization code for a token
 	token, err := ac.oauthConfig.Exchange(ctx, code, oauth2.VerifierOption(ac.verifier))
 	if err != nil {
-		return nil, fmt.Errorf("kissauth: %w", err)
+		return fmt.Errorf("kissauth: %w", err)
 	}
 
 	// Create an HTTP client using the retrieved token
@@ -100,23 +96,21 @@ func (ac *KissAuthClient) ExchangeGoogleCode(ctx context.Context, code string) (
 	// Fetch user information from Google
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
-		return nil, fmt.Errorf("kissauth: %w", err)
+		return fmt.Errorf("kissauth: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Check if the request was successful
 	if resp.StatusCode != http.StatusOK {
-		return nil,
-			fmt.Errorf("kissauth: failed to fetch user info during google code exchange, status code %d",
-				resp.StatusCode)
+		return fmt.Errorf("kissauth: failed to fetch user info during google code exchange, status code %d", resp.StatusCode)
 	}
 
 	// Decode the user information into the provided user entity
-	if err := json.NewDecoder(resp.Body).Decode(&ac.userEntity); err != nil {
-		return nil, fmt.Errorf("kissauth: %w", err)
+	if err := json.NewDecoder(resp.Body).Decode(userEntity); err != nil {
+		return fmt.Errorf("kissauth: %w", err)
 	}
 
-	return ac.userEntity, nil
+	return nil
 }
 
 // GenerateJWT creates a new JWT with the provided custom claims, expiration time,
