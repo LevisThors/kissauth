@@ -69,7 +69,7 @@ func (ac *KissAuthClient) ValidateJWT(tokenString string) (any, error) {
 // Unwraps custom claims which you put in JWT token and returns them.
 // It returns ErrInvalidType if CustomClaims can't be casted to T
 func UnwrapJWTClaims[T any](claims any) (T, error) {
-	customClaims, ok := claims.(JWTClaims).CustomClaims.(T)
+	customClaims, ok := claims.(*JWTClaims).CustomClaims.(T)
 	if !ok {
 		var emptyValue T
 		return emptyValue, ErrInvalidType
