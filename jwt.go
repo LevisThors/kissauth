@@ -1,6 +1,7 @@
 package kissauth
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -66,14 +67,30 @@ func (ac *KissAuthClient) ValidateJWT(tokenString string) (any, error) {
 	return nil, ErrInvalidJWT
 }
 
-// Unwraps custom claims which you put in JWT token and returns them.
-// It returns ErrInvalidType if CustomClaims can't be casted to T
-func UnwrapJWTClaims[T any](claims any) (T, error) {
-	customClaims, ok := claims.(*JWTClaims).CustomClaims.(T)
+// Unmarshals claims and parses it to result, result should
+// be the reference of type, which claims can unmap to
+// e.g. if you used UserType in GenerateJWT, your UnmarshalJWTClaims
+// will be:
+// var user UserType
+// err := unmarshalJWTClaims(claims, &user)
+func UnmarshalJWTClaims(claims any, result any) error {
+	jwtClaims, ok := claims.(*JWTClaims)
 	if !ok {
-		var emptyValue T
-		return emptyValue, ErrInvalidType
+		return ErrInvalidType
 	}
 
-	return customClaims, nil
+	switch v := jwtClaims.CustomClaims.(type) {
+	case map[string]interface{}:
+		jsonData, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("marshal error: %w", err)
+		}
+
+		if err := json.Unmarshal(jsonData, result); err != nil {
+			return fmt.Errorf("unmarshal error: %w", err)
+		}
+		return nil
+	default:
+		return ErrInvalidType
+	}
 }
